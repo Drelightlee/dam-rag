@@ -34,21 +34,22 @@ export function useChat() {
       })
 
       if (!response.ok) {
-        assistantMsg.content = '请求失败，请稍后重试'
-        assistantMsg.loading = false
-        return
+        throw new Error(`HTTP ${response.status}`)
       }
 
       const reader = response.body!.getReader()
       const decoder = new TextDecoder('utf-8')
       assistantMsg.loading = false
+      let buffer = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
-        const text = decoder.decode(value, { stream: true })
-        const lines = text.split('\n')
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        // last element may be an incomplete line — save it for next chunk
+        buffer = lines.pop() ?? ''
 
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
@@ -58,17 +59,15 @@ export function useChat() {
           try {
             const parsed = JSON.parse(data)
 
-            // 自定义 sources 事件（server sends event: sources\ndata: {"chunks":[...]}\n\n）
             if (parsed.chunks) {
               assistantMsg.sources = parsed.chunks
               continue
             }
 
-            // OpenAI delta 格式
             const delta = parsed.choices?.[0]?.delta?.content
             if (delta) assistantMsg.content += delta
           } catch {
-            // 忽略解析错误
+            // ignore parse errors
           }
         }
       }
