@@ -2,7 +2,6 @@
 import db from '~/server/utils/db'
 import { chunkText } from '~/server/utils/chunking'
 import { getEmbedding } from '~/server/utils/embeddings'
-import { Prisma } from '@prisma/client'
 
 export default defineEventHandler(async (event) => {
   const formData = await readFormData(event)
@@ -45,6 +44,10 @@ async function processFile(fileId: string, file: File) {
 
   for (const chunkContent of chunks) {
     const embedding = await getEmbedding(chunkContent)
+
+    if (!embedding.every(n => typeof n === 'number' && isFinite(n))) {
+      throw new Error('Embedding 包含无效数值')
+    }
 
     await db.$executeRaw`
       INSERT INTO "Chunk" (id, "fileId", content, embedding)
