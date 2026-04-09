@@ -1,0 +1,43 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pgvector(map: "vector")]
+}
+
+model File {
+  id         String     @id @default(cuid())
+  name       String
+  size       Int
+  mimeType   String
+  status     FileStatus @default(PENDING)
+  createdAt  DateTime   @default(now())
+  chunks     Chunk[]
+}
+
+model Chunk {
+  id        String                      @id @default(cuid())
+  fileId    String
+  content   String
+  embedding Unsupported("vector(1536)")?
+  file      File                        @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([fileId])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  messages  Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum FileStatus {
+  PENDING
+  PROCESSING
+  READY
+  ERROR
+}
