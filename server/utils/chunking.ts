@@ -9,6 +9,9 @@ export function chunkText(
   chunkSize = 500,
   overlap = 50,
 ): string[] {
+  if (overlap >= chunkSize)
+    throw new Error(`overlap (${overlap}) must be less than chunkSize (${chunkSize})`)
+
   const chunks: string[] = []
   let start = 0
 
